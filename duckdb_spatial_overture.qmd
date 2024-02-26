@@ -1,0 +1,146 @@
+---
+title: "spatial data from Overture Maps"
+format: html
+
+editor: source
+---
+
+[Getting Overture Maps Data](https://github.com/OvertureMaps/data/tree/main?tab=readme-ov-file#3-duckdb-sql)
+
+1.  [Download and install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+    -   [Overture data types](https://github.com/OvertureMaps/data/tree/main?tab=readme-ov-file#data-location) are listed with Amazon S3 URIs
+
+Example CLI
+
+```         
+aws s3 cp --region us-west-2 --no-sign-request --recursive s3://overturemaps-us-west-2/release/2024-02-15-alpha.0/ <DESTINATION>
+```
+
+2.  Using [Overture data locations](https://github.com/OvertureMaps/data/tree/main?tab=readme-ov-file#data-location) for Admins
+
+    -   `s3://overturemaps-us-west-2/release/2024-02-15-alpha.0/theme=admins`
+
+In practice CLI
+
+```         
+aws s3 cp --region us-west-2 --no-sign-request --recursive s3://overturemaps-us-west-2/release/2024-02-15-alpha.0/theme=admins data_overture
+```
+
+```{r}
+library(arrow)
+library(dplyr)
+# library(duckdb)
+```
+
+## example 1
+
+via {arrow} open the admin boundary parquet files
+
+```{r}
+my_ov_admin <- arrow::open_dataset("data_overture/type=administrativeBoundary/")
+```
+
+Quick look
+
+```{r}
+my_ov_admin |> 
+  collapse() |> 
+  glimpse()
+```
+
+```{r}
+my_ov_admin |> 
+  head() |> 
+  collect() 
+```
+
+what does the bbox variable look like.
+
+```{r}
+my_ov_admin |> 
+  select(bbox) |> 
+  head() |> 
+  collect() |> 
+  tidyr::unnest(bbox)
+```
+
+names
+
+```{r}
+my_ov_admin |> 
+  select(names) |> 
+  head() |> 
+  collect() |> 
+  tidyr::unnest(names)
+```
+
+sources
+
+```{r}
+my_ov_admin |> 
+  select(sources) |> 
+  head() |> 
+  collect() |> 
+  tidyr::unnest(sources)
+```
+
+## Example 2
+
+locality area
+
+```{r}
+locar <- arrow::open_dataset("data_overture/type=localityArea/")
+```
+
+```{r}
+locar |> 
+  head() |> 
+  collect()
+```
+
+------------------------------------------------------------------------
+
+## dukckdb
+
+Open connection to duckdb
+
+```{r}
+library(duckdb)
+```
+
+```{r}
+con <- dbConnect(duckdb::duckdb())
+```
+
+I guess I need some duckDB extenstions
+
+INSTALL spatial; INSTALL httpfs;
+
+https://github.com/OvertureMaps/data/tree/main?tab=readme-ov-file#3-duckdb-sql
+
+```{r}
+my_ov_admin |> 
+  arrow::to_duckdb() |> 
+  head() |> 
+  collect()
+```
+
+Conjecture: Problem has to do with duckdb::duckdb not having proper duckdb extensions as described here: https://github.com/OvertureMaps/data/tree/main?tab=readme-ov-file#3-duckdb-sql
+
+Assumption is that installing duckdb as the command line will allow for 
+
+```
+INSTALL spatial;
+INSTALL httpfs;
+```
+
+and
+
+```
+LOAD spatial;
+LOAD httpfs;
+SET s3_region='us-west-2';
+```
+
+
