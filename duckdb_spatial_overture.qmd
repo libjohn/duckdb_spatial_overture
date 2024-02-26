@@ -33,7 +33,7 @@ library(dplyr)
 # library(duckdb)
 ```
 
-## example 1
+## Example 1
 
 via {arrow} open the admin boundary parquet files
 
